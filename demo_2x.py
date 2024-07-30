@@ -44,19 +44,34 @@ model.device()
 
 print(f'=========================Start Generating=========================')
 
-I0 = cv2.imread('figs/img1.jpg')
-I2 = cv2.imread('figs/img2.jpg')
+def genMid(I0, I2):
 
-I0_ = (torch.tensor(I0.transpose(2, 0, 1)).cuda() / 255.).unsqueeze(0)
-I2_ = (torch.tensor(I2.transpose(2, 0, 1)).cuda() / 255.).unsqueeze(0)
+    I0_ = (torch.tensor(I0.transpose(2, 0, 1)).cuda() / 255.).unsqueeze(0)
+    I2_ = (torch.tensor(I2.transpose(2, 0, 1)).cuda() / 255.).unsqueeze(0)
 
-padder = InputPadder(I0_.shape, divisor=32)
-I0_, I2_ = padder.pad(I0_, I2_)
+    padder = InputPadder(I0_.shape, divisor=32)
+    I0_, I2_ = padder.pad(I0_, I2_)
 
-mid = (padder.unpad(model.inference(I0_, I2_, TTA=TTA, fast_TTA=TTA))[0].detach().cpu().numpy().transpose(1, 2, 0) * 255.0).astype(np.uint8)
-images = [I0[:, :, ::-1], mid[:, :, ::-1], I2[:, :, ::-1]]
-cv2.imwrite('figs/out_2x.jpg', mid)
-mimsave('figs/out_2x.gif', images, fps=3)
+    mid = (padder.unpad(model.inference(I0_, I2_, TTA=TTA, fast_TTA=TTA))[0].detach().cpu().numpy().transpose(1, 2, 0) * 255.0).astype(np.uint8)
+    return mid
 
+I0 = cv2.imread('figs/000694.png')
+I2 = cv2.imread('figs/000696.png')
+
+gif_imgs = [I0, I2]
+for sub_num in [1, 1, 1, 1, 1]:
+    gif_imgs_temp = [gif_imgs[0], ]
+    for i, (img_start, img_end) in enumerate(zip(gif_imgs[:-1], gif_imgs[1:])):
+        interp_imgs = [genMid(img_start, img_end)]
+        gif_imgs_temp += interp_imgs
+        gif_imgs_temp += [img_end, ]
+    gif_imgs = gif_imgs_temp
+
+# images = [I0[:, :, ::-1], mid[:, :, ::-1], I2[:, :, ::-1]]
+# cv2.imwrite('figs/out_2x.jpg', mid)
+# mimsave('figs/out_2x.gif', images, fps=3)
+print('Interpolate 2 images to {} images'.format(len(gif_imgs)))
+for i in range(len(gif_imgs)):
+    cv2.imwrite('results/{:03d}.png'.format(i), gif_imgs[i])
 
 print(f'=========================Done=========================')
